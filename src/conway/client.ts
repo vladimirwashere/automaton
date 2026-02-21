@@ -24,6 +24,7 @@ import type {
 } from "../types.js";
 import { ResilientHttpClient } from "./http-client.js";
 import { ulid } from "ulid";
+import { resolveSandboxPath } from "./paths.js";
 
 interface ConwayClientOptions {
   apiUrl: string;
@@ -151,11 +152,12 @@ export function createConwayClient(
       fs.writeFileSync(resolved, content, "utf-8");
       return;
     }
+    const absolutePath = resolveSandboxPath(filePath);
     try {
       await request(
         "POST",
         `/v1/sandboxes/${sandboxId}/files/upload/json`,
-        { path: filePath, content },
+        { path: absolutePath, content },
       );
     } catch (err: any) {
       // If sandbox file APIs 403 due to mismatched Conway keys, fall back to local FS.
@@ -173,12 +175,11 @@ export function createConwayClient(
     if (isLocal) {
       return fs.readFileSync(resolveLocalPath(filePath), "utf-8");
     }
+    const absolutePath = resolveSandboxPath(filePath);
     try {
       const result = await request(
         "GET",
-        `/v1/sandboxes/${sandboxId}/files/read?path=${encodeURIComponent(filePath)}`,
-        undefined,
-        { retries404: 0 },
+        `/v1/sandboxes/${sandboxId}/files/read?path=${encodeURIComponent(absolutePath)}`,
       );
       return typeof result === "string" ? result : result.content || "";
     } catch (err: any) {
